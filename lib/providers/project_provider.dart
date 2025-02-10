@@ -18,7 +18,7 @@ class ProjectProvider extends ChangeNotifier {
       final snapshot = await _firestore.collection('projects').get();
       _projects = await Future.wait(snapshot.docs.map((doc) async {
         Project project = Project.fromJson({...doc.data(), 'id': doc.id});
-        project.expenses = await fetchExpenses(doc.id); // Carga los gastos también
+        project.expenses = await fetchExpenses(doc.id); 
         return project;
       }));
       notifyListeners();
