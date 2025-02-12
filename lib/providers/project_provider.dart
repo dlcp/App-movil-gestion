@@ -18,7 +18,7 @@ class ProjectProvider extends ChangeNotifier {
       final snapshot = await _firestore.collection('projects').get();
       _projects = await Future.wait(snapshot.docs.map((doc) async {
         Project project = Project.fromJson({...doc.data(), 'id': doc.id});
-        project.expenses = await fetchExpenses(doc.id); 
+        project.expenses = await fetchExpenses(doc.id);
         return project;
       }));
       notifyListeners();
@@ -40,7 +40,13 @@ class ProjectProvider extends ChangeNotifier {
 
   Future<void> updateProject(int index, Project updatedProject) async {
     try {
+      if (updatedProject.id == null || updatedProject.id!.isEmpty) {
+        print("Error: El proyecto no tiene un ID válido.");
+        return;
+      }
+
       await _firestore.collection('projects').doc(updatedProject.id).update(updatedProject.toJson());
+
       _projects[index] = updatedProject;
       notifyListeners();
     } catch (e) {
@@ -50,7 +56,21 @@ class ProjectProvider extends ChangeNotifier {
 
   Future<void> removeProject(int index) async {
     try {
-      await _firestore.collection('projects').doc(_projects[index].id).delete();
+      if (index < 0 || index >= _projects.length) {
+        print("Error: Índice fuera de rango.");
+        return;
+      }
+
+      String projectId = _projects[index].id ?? "";
+      if (projectId.isEmpty) {
+        print("Error: El ID del proyecto es inválido.");
+        return;
+      }
+
+      await deleteAllExpenses(projectId);
+
+      await _firestore.collection('projects').doc(projectId).delete();
+
       _projects.removeAt(index);
       notifyListeners();
     } catch (e) {
@@ -84,6 +104,17 @@ class ProjectProvider extends ChangeNotifier {
     } catch (e) {
       print("Error al obtener gastos: $e");
       return [];
+    }
+  }
+
+  Future<void> deleteAllExpenses(String projectId) async {
+    try {
+      final snapshot = await _firestore.collection('projects').doc(projectId).collection('expenses').get();
+      for (var doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print("Error al eliminar todos los gastos: $e");
     }
   }
 }

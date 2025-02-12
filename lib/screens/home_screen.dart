@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/project_provider.dart';
 import '../models/project.dart';
 import 'project_detail_screen.dart';
-import 'create_project_screen.dart'; 
+import 'create_project_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -24,58 +24,46 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: Text("Proyectos")),
       body: Consumer<ProjectProvider>(
         builder: (context, projectProvider, child) {
-          return FutureBuilder(
-            future: projectProvider.fetchProjects(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              }
+          if (projectProvider.projects.isEmpty) {
+            return Center(child: Text("No hay proyectos aún. Agrega uno."));
+          }
 
-              if (projectProvider.projects.isEmpty) {
-                return Center(child: Text("No hay proyectos aún. Agrega uno."));
-              }
+          return ListView.builder(
+            itemCount: projectProvider.projects.length,
+            itemBuilder: (context, index) {
+              final project = projectProvider.projects[index];
 
-              return ListView.builder(
-                itemCount: projectProvider.projects.length,
-                itemBuilder: (context, index) {
-                  final project = projectProvider.projects[index];
-
-                  return Card(
-                    child: ListTile(
-                      title: Text(project.name),
-                      subtitle: Text('Presupuesto: \$${project.budget}'),
-                      onTap: () {
-                        // 📌 Navegar a la pantalla de detalles del proyecto seleccionado
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ProjectDetailScreen(project: project),
-                          ),
-                        );
-                      },
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () {
-                              _editProjectDialog(context, index, project);
-                            },
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              Provider.of<ProjectProvider>(context,
-                                      listen: false)
-                                  .removeProject(index);
-                            },
-                          ),
-                        ],
+              return Card(
+                child: ListTile(
+                  title: Text(project.name),
+                  subtitle: Text('Presupuesto: \$${project.budget}'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProjectDetailScreen(project: project),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () {
+                          _editProjectDialog(context, index, project);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          _confirmDeleteProject(context, index, project);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           );
@@ -118,11 +106,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancelar'),
+            ),
             ElevatedButton(
               onPressed: () {
                 final updatedProject = Project(
                   id: project.id,
-                  name: _nameController.text,
+                  name: _nameController.text.trim(),
                   budget: double.tryParse(_budgetController.text) ?? 0.0,
                   creationDate: project.creationDate,
                   endDate: project.endDate,
@@ -141,4 +133,29 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-}
+
+ void _confirmDeleteProject(BuildContext context, int index, Project project) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Eliminar Proyecto'),
+        content: Text('¿Estás seguro de que deseas eliminar el proyecto "${project.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Provider.of<ProjectProvider>(context, listen: false).removeProject(index);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Eliminar'),
+          ),
+        ],
+      );
+    },
+  );
+}}
